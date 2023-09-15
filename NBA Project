@@ -1,0 +1,570 @@
+---
+title: 'NBA Position Scarcity: Stat 184 Final Project'
+author: "Ethan Sullivan, Adith Gopal, and Evan Settipane"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+    df_print: paged
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Introduction
+
+Our STAT 184 Final Project aims to answers a couple questions regarding player performance using data of players in the National Basketball Association (NBA). 
+
+We want to answer the following questions:
+  1) What positions in the NBA are the most scarce for talent? 
+  2) Based on the salaries of players at each position, what should NBA General Managers (GMs) do to create the most optimal lineup?
+
+Our project will aim to show what positions have the most (and subsequently least) amount of talent, along with which positions are the most highly paid. Our project can be incredibly valuable because it can provide insight on player spending in the NBA. We can see if GMs are spending money on the right positions, based on player performance and positional scarcity. 
+
+Considering the NBA is the top organization of professional basketball, it was deemed best to work with data of only NBA players. The scope of our project will only be for NBA players.
+
+There are two attributes we will use to determine player performance, which in turn will help determine positional scarcity. The two attributes are Player Efficiency Rating (PER) and Value Over Replacement Player (VORP). 
+
+PER is an attribute that measures the per-minute production of an NBA player. It is standardized so that the league average is 15. The higher the PER value, the more efficient a player is.
+
+VORP is an attribute that estimates how much better a box score player is compared to a replacement-level player (someone who is likely on the bench, or potentially rarely plays). A replacement-level player has a score of -2.0. The higher the VORP, the better a player has performed over a replacement-level player.
+
+These two attributes, when looked at together, can provide insight on the performance of players. These data attributes were directly from Basketball Reference, a website full of NBA statistics. Each case has a player and their respective NBA statistics, including PER and VORP.
+
+We also looked at salary data from SpotRac, a large website that stores salary data of professional athletes. We are looking at salaries per-year of NBA players. This data will be used to see what positions are paid the most, and least. The salary of every individual NBA player was found, then averaged to create average salaries. Unlike PER and VORP, the average salary stats were created out of the web scraped datasets.
+
+# Importing and Visualizing Salary Data
+
+Here, we scraped salary data from SpotRac. Then, we filtered the data by position, then found the average salary of each position in the NBA. 
+```{r Libraries, message = FALSE, warning = FALSE}
+library(dplyr)
+library(rvest)
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+
+#Note: Our Coding Style will be camelCase.
+```
+
+```{r Getting Salary Data of NBA Players By Position}
+
+pointGuardraw <- read_html(
+  x = "https://www.spotrac.com/nba/rankings/2022-23/average/point-guard/"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+pointGuard <- pointGuardraw[[1]]
+pointGuard <-pointGuard[,-1]
+#View(pointGuard)
+
+shootingGuardraw <- read_html(
+  x = "https://www.spotrac.com/nba/rankings/2022-23/average/shooting-guard/"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+shootingGuard <- shootingGuardraw[[1]]
+shootingGuard <- shootingGuard[,-1]
+#View(shootingGuard)
+
+smallForwardraw <- read_html(
+  x = "https://www.spotrac.com/nba/rankings/2022-23/average/small-forward/"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+smallForward <- smallForwardraw[[1]]
+smallForward <- smallForward[,-1]
+#View(smallForward)
+
+powerForwardraw <- read_html(
+  x = "https://www.spotrac.com/nba/rankings/2022-23/average/power-forward/"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+powerForward <- powerForwardraw[[1]]
+powerForward <- powerForward[,-1]
+#View(powerForward)
+
+centerraw <- read_html(
+  x = "https://www.spotrac.com/nba/rankings/2022-23/average/center/"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+center <- centerraw[[1]]
+center <- center[,-1]
+#View(center)
+
+
+
+```
+
+```{r cleaning Salary Data}
+pointGuard$average <- gsub(",","",pointGuard$average)
+pointGuard$average <- gsub("\\$","",pointGuard$average)
+pointGuard$average <- as.numeric(as.character(pointGuard$average))
+
+shootingGuard$average <- gsub(",","",shootingGuard$average)
+shootingGuard$average <- gsub("\\$","",shootingGuard$average)
+shootingGuard$average <- as.numeric(as.character(shootingGuard$average))
+
+smallForward$average <- gsub(",","",smallForward$average)
+smallForward$average <- gsub("\\$","",smallForward$average)
+smallForward$average <- as.numeric(as.character(smallForward$average))
+
+powerForward$average <- gsub(",","",powerForward$average)
+powerForward$average <- gsub("\\$","",powerForward$average)
+powerForward$average <- as.numeric(as.character(powerForward$average))
+
+center$average <- gsub(",","",center$average)
+center$average <- gsub("\\$","",center$average)
+center$average <- as.numeric(as.character(center$average))
+```
+
+```{r Averaging Salary Data}
+options(scipen = 999)
+pointGuard %>%
+  select(average) %>%
+  summarize(
+    Min = min(average, na.rm=TRUE),
+    Max = max(average, na.rm=TRUE),
+    Median = median(average, na.rm=TRUE),
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+    SD = format(sd(average), digits = 3)
+  ) %>%
+  kable(
+    caption = "Summary Statistics for Point Guard Salaries",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+shootingGuard %>%
+  select(average) %>%
+  summarize(
+    Min = min(average, na.rm=TRUE),
+    Max = max(average, na.rm=TRUE),
+    Median = median(average, na.rm=TRUE),
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+    SD = format(sd(average), digits = 3)
+  ) %>%
+  kable(
+    caption = "Summary Statistics for Shooting Guard Salaries",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+smallForward %>%
+  select(average) %>%
+  summarize(
+    Min = min(average, na.rm=TRUE),
+    Max = max(average, na.rm=TRUE),
+    Median = median(average, na.rm=TRUE),
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+    SD = format(sd(average), digits = 3)
+  ) %>%
+  kable(
+    caption = "Summary Statistics for Small Forward Salaries",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+powerForward %>%
+  select(average) %>%
+  summarize(
+    Min = min(average, na.rm=TRUE),
+    Max = max(average, na.rm=TRUE),
+    Median = median(average, na.rm=TRUE),
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+    SD = format(sd(average), digits = 3)
+  ) %>%
+  kable(
+    caption = "Summary Statistics for Power Forward Salaries",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+center %>%
+  select(average) %>%
+  summarize(
+    Min = min(average, na.rm=TRUE),
+    Max = max(average, na.rm=TRUE),
+    Median = median(average, na.rm=TRUE),
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+    SD = format(sd(average), digits = 3),
+  ) %>%
+  kable(
+    caption = "Summary Statistics for Center Salaries",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+As seen in the tables, the average between each position ranks from least to most for Power Forward, Center, Small Forward, Shooting Guard, and Point Guard, with each earning \$8,656,268, \$9,726,935, \$9,841,110, \$10,537,930, and \$11,945,189 respectively. Despite having a smaller average than Shooting Guards, Small Forwards have a larger variation of salaries with a standard deviation of \$11,458,758. 
+
+Below is a box plot that shows this further.
+
+```{r Visualizing Salary Data}
+options(scipen = 999)
+combinedPositions <- bind_rows(pointGuard,shootingGuard,smallForward,powerForward,center)
+ggplot(combinedPositions) +
+  aes(x = Position, y = average, colour = Position) +
+  geom_boxplot(fill = "#112446") +
+  scale_color_hue(direction = 1) +
+  labs(
+    x = "Position",
+    y = "Average Salary",
+    title = "Average Position Salaries"
+  ) +
+  theme_gray() +
+  theme(
+    plot.title = element_text(size = 28L,
+                              face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 20L,
+                                face = "bold"),
+    axis.title.x = element_text(size = 20L,
+                                face = "bold")
+  )
+
+```
+
+This box plot shows the average salaries by position of all NBA players. We see that, on average, point guards (PGs) are the highest paid, while Small Forwards (SFs) are the least paid. This indicates that NBA GMs value PGs over other positions, especially over SFs. 
+
+# Exploring PER and VORP Data By Position
+
+We can explore the talent pool at each position. First, we will look at talent at the league-average level, indicated at VORP > 2 and PER > 10.
+```{r Creating and Visualizing PER and VORP Data, include = FALSE}
+#read table
+nbaScarc <- read_html(
+  x = "https://www.basketball-reference.com/leagues/NBA_2022_advanced.html"
+) %>%
+  html_elements(css = "table") %>%
+  html_table()
+
+#combine cols for PG################################
+combStatpg <- bind_cols(nbaScarc[1])
+#combine cols for SG################################
+combStatsg <- bind_cols(nbaScarc[1])
+#combine cols for SF################################
+combStatsf <- bind_cols(nbaScarc[1])
+#combine cols for PF################################
+combStatpf <- bind_cols(nbaScarc[1])
+#combine cols for C#################################
+combStatc <- bind_cols(nbaScarc[1])
+
+elitePG <- combStatpg %>%
+  filter(PER >= 17, VORP >= 3, Pos == "PG")
+
+eliteSG <- combStatsg %>%
+  filter(PER >= 17, VORP >= 3, Pos == "SG")
+
+eliteSF <- combStatsf %>%
+  filter(PER >= 17, VORP >= 3, Pos == "SF")
+
+elitePF <- combStatpf %>%
+  filter(PER >= 17, VORP >= 3, Pos == "PF")
+
+eliteC <- combStatc %>%
+  filter(PER >= 17, VORP >= 3, Pos == "C")
+
+#filtering PER, VORP and POS for PG
+combStatpg <- combStatpg %>%
+  filter(PER > 10, VORP > 2, Pos == "PG")
+
+#filtering PER, VORP and POS for SG
+combStatsg <- combStatsg %>%
+  filter(PER > 10, VORP > 2, Pos == "SG")
+
+#filtering PER, VORP and POS for SF
+combStatsf <- combStatsf %>%
+  filter(PER > 10, VORP > 2, Pos == "SF")
+
+#filtering PER, VORP and POS for PF
+combStatpf <- combStatpf %>%
+  filter(PER > 10, VORP > 2, Pos == "PF")
+
+#filtering PER, VORP and POS for C 
+combStatc <- combStatc %>%
+  filter(PER > 10, VORP > 2, Pos == "C")
+```
+
+```{r PGVISUAL}
+combStatpg %>%
+  kable(
+    caption = "Summary Statistics for Point Guards with VORP > 2 and PER > 10",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+```{r SG Visuals}
+combStatsg %>%
+  kable(
+    caption = "Summary Statistics for Shooting Guard with VORP > 2 and PER > 10",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+```{r SF Visuals}
+combStatsf %>%
+  kable(
+    caption = "Summary Statistics for Small Forwards with VORP > 2 and PER > 10",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+```{r PF Visuals}
+combStatpf %>%
+  kable(
+    caption = "Summary Statistics for Power Forwards with VORP > 2 and PER > 10",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+```{r Center Visuals}
+combStatc %>%
+  kable(
+    caption = "Summary Statistics for Centers with VORP > 2 and PER > 10",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+These five tables indicate that the most scarce positions are SFs, but also SGs, simply because there are much less guys with VORP > 2 and PER > 10 compared to other positions. This fits in line with the box plot above that shows that SFs are the lowest paid, perhaps because there's less talent at the position.
+
+Below, we will show the top tier of talent at each position. This is indicated with a PER > 17 and a VORP > 3. We now look at only the best players at each position, rather than league-averages players.
+
+```{r Elite PGs}
+elitePG %>%
+  kable(
+    caption = "Summary Statistics for PGs with PER > 17 and VORP > 3",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16
+  )
+
+```
+
+```{r Elite SGs}
+eliteSG %>%
+  kable(
+    caption = "Summary Statistics for SGs with PER > 17 and VORP > 3",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16
+  )
+```
+
+```{r Elite SFs}
+eliteSF %>%
+  kable(
+    caption = "Summary Statistics for SFs with PER > 17 and VORP > 3",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16
+  )
+```
+
+```{r Elite PFs}
+elitePF %>%
+  kable(
+    caption = "Summary Statistics for PFs with PER > 17 and VORP > 3",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16
+  )
+```
+
+```{r Elite Cs}
+eliteC %>%
+  kable(
+    caption = "Summary Statistics for Cs with PER > 17 and VORP > 3",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16
+  )
+```
+These five tables show that the SF and SG positions are by far the most scarce, as they only have two "elite-level" players at each of their respected positions. PGs, PFs, and Centers are much more abundant with talent.
+
+Using the basketball reference website, we were able to pull a table with the stats PER and VORP on it.  Changing the table to show a player's PER to be greater than 17 and VORP greater than 3, enables us to see the more elite players at their respective positions. Our findings show that the shooting guard (SG) and small forward (SF) positions are very scarce, from this we ask the following question. Should GM’s spend more money to get a top shooting guard or small forward because they are so rare, or should they spend more money at more common positions because it is easier to pick up talent. 
+
+Below, we can now include average salaries at each position to investigate where the best bargain players are.
+
+
+```{r Getting Average Salaries By Position}
+topTenPG <- combinedPositions %>%
+  filter(Position == "PG") %>%
+    slice(1:10)
+
+
+topTenSG <- combinedPositions %>%
+  filter(Position == "SG") %>%
+    slice(1:10)
+
+
+topTenSF <- combinedPositions %>%
+  filter(Position == "SF") %>%
+    slice(1:10)
+
+
+topTenPF <- combinedPositions %>%
+  filter(Position == "PF") %>%
+    slice(1:10)
+
+
+topTenC <- combinedPositions %>%
+  filter(Position == "C") %>%
+    slice(1:10)
+
+
+topTenAverages <- bind_rows(topTenPG, topTenSG, topTenSF, topTenPF, topTenC)
+
+topTenAverages %>%
+  filter(Position == "PG") %>%
+  select(average) %>%
+  summarize(
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+  ) %>%
+ kable(
+    caption = "Mean Salary for Top Ten Point Guards",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )  
+
+topTenAverages %>%
+  filter(Position == "SG") %>%
+  select(average) %>%
+  summarize(
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+  ) %>%
+ kable(
+    caption = "Mean Salary for Top Ten Shooting Guards",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+topTenAverages %>%
+  filter(Position == "SF") %>%
+  select(average) %>%
+  summarize(
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+  ) %>%
+ kable(
+    caption = "Mean Salary for Top Small Forwards",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+topTenAverages %>%
+  filter(Position == "PF") %>%
+  select(average) %>%
+  summarize(
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+  ) %>%
+ kable(
+    caption = "Mean Salary for Top Ten Power Forwards",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+
+topTenAverages %>%
+  filter(Position == "C") %>%
+  select(average) %>%
+  summarize(
+    Mean = format(mean(average, na.rm=TRUE), digits = 3),
+  ) %>%
+ kable(
+    caption = "Mean Salary for Top Ten Centers",
+    booktabs = TRUE,
+    align = c("l", rep("c", 6))
+  ) %>%
+  kableExtra::kable_classic(
+    bootstrap_options = c("striped", "condensed"),
+    font_size = 16,
+  )
+```
+
+The first step in gathering the averages for the top ten players in each position involved filtering for each position in the combinedPositions dataframe. combinedPositions consists of all the salary data for each player. By filtering for each position and slicing for the top ten results, the top ten salaries for each position was obtained. Each of the positions’ top ten salaries are saved into an object for further use. 
+
+
+These separate tables are now combined into one final dataframe, called topTenAverages, consisting of the salaries for the top ten players for each position. To display the averages for the top ten players in each position, topTenAverages is filtered for the position selects the average to calculate. 
+
+
+These tables show that the average top ten salaries for each position ranks from smallest to greatest: Centers, Power Forwards, Small Forwards, Shooting Guards, and Point Guards.  
+
+
+We see that Centers are the cheapest position on average, yet they are not the scarcest. This could imply that you can get a better deal for a top center, so an NBA GM should consider receiving a top Center, meanwhile the top salaries for Shooting Guards and Small forwards are much higher than centers but are much more scarce in terms of talent. This can advise GM’s to avoid paying for top paying Shooting Guards and Forwards because they are harder to get elite talent. The data shows that Point Guards are not very scarce, but are also incredibly talented, justifying their high salary.
+
+We can infer that the SG and SF positions are the most scarce positions in basketball. However, where GMs choose to spend money is still widely debated. It will help them to know what positions are scarce before choosing to spend lots of money to improve their roster.
